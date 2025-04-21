@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X va O o‘yini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body{
+            background-image: url(img.jpg);
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex flex-col justify-center items-center">
+
+    <h1 class="text-4xl font-bold mb-8 text-red-600 drop-shadow-md animate-draw">❌  va ⭕ o‘yini</h1>
+
+    <!-- Tugmalar -->
+    <div id="menu" class="flex flex-col sm:flex-row gap-6">
+        <button onclick="selectMode('friend')" class="px-6 py-3 bg-white border-2 border-red-500 text-red-500 rounded-xl font-semibold text-lg shadow-md hover:bg-red-100 transition-all">
+            🤝 Sherik bilan o‘ynash
+        </button>
+        <button onclick="selectMode('bot')" class="px-6 py-3 bg-white border-2 border-red-500 text-red-500 rounded-xl font-semibold text-lg shadow-md hover:bg-red-100 transition-all">
+            🤖 Bot bilan o‘ynash
+        </button>
+    </div>
+
+    <!-- O‘yin paneli -->
+    <div id="game" class="hidden mt-10 flex flex-col items-center">
+        <p id="status" class="text-xl font-medium text-gray-700 mb-4"></p>
+
+        <div id="board" class="grid grid-cols-3 gap-2 sm:w-72 w-48">
+            <!-- Katakchalar JS orqali yaratiladi -->
+        </div>
+
+        <button onclick="restartGame()" class="mt-6 px-5 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-all">
+            🔁 Qayta o‘ynash
+        </button>
+    </div>
+
+    <style>
+        @keyframes draw {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) rotate(-10deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0);
+            }
+        }
+
+        .animate-draw {
+            animation: draw 1s ease-in-out forwards;
+        }
+
+        .xo-anim {
+            animation: drawXO 0.3s ease-in-out forwards;
+        }
+
+        @keyframes drawXO {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+
+    <script>
+        let currentPlayer = "X";
+        let gameMode = ""; // 'friend' yoki 'bot'
+        let boardState = ["", "", "", "", "", "", "", "", ""];
+        let gameActive = true;
+
+        const menu = document.getElementById("menu");
+        const game = document.getElementById("game");
+        const statusText = document.getElementById("status");
+        const board = document.getElementById("board");
+
+        function selectMode(mode) {
+            gameMode = mode;
+            menu.classList.add("hidden");
+            game.classList.remove("hidden");
+            statusText.textContent = mode === "friend" ? "X navbati" : "Siz boshlang!"
+
+            renderBoard();
+        }
+
+        function renderBoard() {
+            board.innerHTML = "";
+            boardState = ["", "", "", "", "", "", "", "", ""];
+            currentPlayer = "X";
+            gameActive = true;
+
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement("div");
+                cell.className = "w-full h-24 bg-white border-2 border-gray-400 flex justify-center items-center text-4xl font-bold rounded-md shadow hover:cursor-pointer transition-all";
+                cell.dataset.index = i;
+                cell.onclick = () => handleClick(i, cell);
+                board.appendChild(cell);
+            }
+        }
+
+        function handleClick(index, cell) {
+            if (!gameActive || boardState[index] !== "") return;
+
+            boardState[index] = currentPlayer;
+            cell.textContent = currentPlayer;
+            cell.classList.add("text-red-500", "drop-shadow", "xo-anim");
+
+            if (checkWinner()) {
+                statusText.textContent = `${currentPlayer} yutdi!`;
+                gameActive = false;
+                return;
+            }
+
+            if (!boardState.includes("")) {
+                statusText.textContent = "Durrang!";
+                gameActive = false;
+                return;
+            }
+
+            if (gameMode === "friend") {
+                currentPlayer = currentPlayer === "X" ? "O" : "X";
+                statusText.textContent = `${currentPlayer} navbati`;
+            } else if (gameMode === "bot") {
+                currentPlayer = "O";
+                statusText.textContent = "Bot harakat qilmoqda...";
+                setTimeout(botMove, 500);
+            }
+        }
+
+        function botMove() {
+            // Check if the bot can win or block
+            let move = findBestMove();
+            const cell = board.children[move];
+            boardState[move] = "O";
+            cell.textContent = "O";
+            cell.classList.add("text-red-500", "drop-shadow", "xo-anim");
+
+            if (checkWinner()) {
+                statusText.textContent = "Bot yutdi!";
+                gameActive = false;
+                return;
+            }
+
+            if (!boardState.includes("")) {
+                statusText.textContent = "Durrang!";
+                gameActive = false;
+                return;
+            }
+
+            currentPlayer = "X";
+            statusText.textContent = "Sizning navbatingiz!";
+        }
+
+        function findBestMove() {
+            // Bot to check if it can win or block the player
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6] // Diagonals
+            ];
+
+            // Check if the bot can win or block
+            for (let i = 0; i < winPatterns.length; i++) {
+                const [a, b, c] = winPatterns[i];
+                if (boardState[a] === "O" && boardState[b] === "O" && boardState[c] === "") return c;
+                if (boardState[b] === "O" && boardState[c] === "O" && boardState[a] === "") return a;
+                if (boardState[a] === "O" && boardState[c] === "O" && boardState[b] === "") return b;
+                if (boardState[a] === "X" && boardState[b] === "X" && boardState[c] === "") return c;
+                if (boardState[b] === "X" && boardState[c] === "X" && boardState[a] === "") return a;
+                if (boardState[a] === "X" && boardState[c] === "X" && boardState[b] === "") return b;
+            }
+
+            // Random move if no immediate win or block
+            let emptyIndexes = boardState.map((val, idx) => val === "" ? idx : null).filter(val => val !== null);
+            return emptyIndexes[Math.floor(Math.random() * emptyIndexes.length)];
+        }
+
+        function checkWinner() {
+            const wins = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            return wins.some(combo => {
+                const [a, b, c] = combo;
+                return boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c];
+            });
+        }
+
+        function restartGame() {
+            renderBoard();
+            statusText.textContent = gameMode === "friend" ? "X navbati" : "Siz boshlang!";
+        }
+    </script>
+</body>
+
+</html>
